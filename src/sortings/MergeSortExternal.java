@@ -26,7 +26,7 @@ public class MergeSortExternal {
         byteSize = 24;
         newLineByteAmount = 1;
         List<Path> pathFiles = splitFile(inputFile, mBperSplit);
-        System.out.println("Files were splited");
+        System.out.println("File was splited");
         merge(outputFile, pathFiles);
         System.out.println("Files were merged");
         return Paths.get(outputFile + ".csv");

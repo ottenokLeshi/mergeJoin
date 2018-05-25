@@ -1,3 +1,5 @@
+This implementation joins csv files with Unix newline character.
+
 # Problem statement
 
 There are two tables that are stored as plain text files in CSV format. Each table has two columns: a random numerical key and a random string value. Both fields have fixed size: 9 digits for a key, 14 characters for a value.
