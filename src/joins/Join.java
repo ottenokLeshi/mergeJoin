@@ -19,7 +19,6 @@ public class Join {
     private String pathOutput;
     private int mBperSplit;
 
-
     public Join(String pathA, String pathB, String pathOutput, int mBperSplit) {
         this.pathA = pathA;
         this.pathB = pathB;
@@ -27,8 +26,13 @@ public class Join {
         this.mBperSplit = mBperSplit;
     }
 
+    /**
+     * Checks if the same object already exists and merge them, otherwise adds it to the list
+     * @param arrayList - list with LineObjects
+     * @param buffer    - buffer from file
+     */
     private void addValueToList(List<LineObject> arrayList, byte[] buffer) {
-        LineObject lineObject = LineObject.getLineObjectFromBuffer(buffer);
+        LineObject lineObject = LineObject.getLineObject(buffer);
         if (arrayList.size() != 0 && lineObject.compareTo(arrayList.get(arrayList.size() - 1)) == 0) {
             arrayList.get(arrayList.size() - 1).addValue(lineObject.getValuesList().get(0));
         } else {
@@ -36,12 +40,17 @@ public class Join {
         }
     }
 
+    /**
+     * Sort and joins to files
+     * @throws IOException
+     */
     public void innerJoin() throws IOException {
 
         Path pathOut = Paths.get(pathOutput);
         Path pathSortA = MergeSortExternal.sort(pathA, "pathSortA", mBperSplit);
         Path pathSortB = MergeSortExternal.sort(pathB, "pathSortB", mBperSplit);
 
+        System.out.println("Joining starts");
         int i = 0;
         int j = 0;
         long bytesPerSplit = 1024L * 1024L * mBperSplit / 2;
@@ -53,7 +62,9 @@ public class Join {
         List<LineObject> arrayListA = new ArrayList<>();
         List<LineObject> arrayListB = new ArrayList<>();
 
-
+        /**
+         * Fills the list with objects from first file
+         */
         try (RandomAccessFile sourceFile = new RandomAccessFile(pathSortA.toFile(), "r");
              FileChannel sourceChannel = sourceFile.getChannel()) {
 
@@ -66,6 +77,9 @@ public class Join {
                 }
         }
 
+        /**
+         * Fills the list with objects from second file
+         */
         try (RandomAccessFile sourceFile = new RandomAccessFile(pathSortB.toFile(), "r");
              FileChannel sourceChannel = sourceFile.getChannel()) {
             for (;internalPosB < sourceFile.length() % bytesPerSplit;
@@ -78,23 +92,17 @@ public class Join {
             }
         }
 
-        System.out.println(pathSortA.toString());
-        for (; i < arrayListA.size(); i++) {
-            //System.out.println(arrayListA.get(i).toString());
-        }
-        System.out.println(pathSortB.toString());
-        i = 0;
-        for (; i < arrayListB.size(); i++) {
-            //System.out.println(arrayListB.get(i).toString());
-        }
-        i = 0;
-
-        System.out.println(internalPosA);
-
+        /**
+         * Checks if objects from different lists are equal and writes the result of innerJoin to the specified file
+         */
         while (i < arrayListA.size() && j < arrayListB.size()) {
+
             if (arrayListA.get(i).compareTo(arrayListB.get(j)) < 0) {
                 i += 1;
             } else if (arrayListA.get(i).compareTo(arrayListB.get(j)) == 0) {
+                /**
+                 * join all join results to the object from A list
+                 */
                 arrayListA.get(i).addValues(arrayListB.get(j).getValuesList());
 
                 try (RandomAccessFile sourceFile = new RandomAccessFile(pathOut.toFile(), "rw");
@@ -108,7 +116,9 @@ public class Join {
                 j += 1;
             }
 
-
+            /**
+             * Fills the list if file is't empty and interator is at the end of the list
+             */
             if (i == arrayListA.size() && internalPosA < Files.size(pathSortA)) {
                 try (RandomAccessFile sourceFile = new RandomAccessFile(pathSortA.toFile(), "r");
                      FileChannel sourceChannel = sourceFile.getChannel()) {
@@ -126,7 +136,7 @@ public class Join {
 
             if (j == arrayListB.size() && internalPosB < Files.size(pathSortB)) {
                 try (RandomAccessFile sourceFile = new RandomAccessFile(pathSortB.toFile(), "r");
-                     FileChannel sourceChannel = sourceFile.getChannel()) {
+                FileChannel sourceChannel = sourceFile.getChannel()) {
                     long startPos = internalPosB;
                     arrayListB.clear();
                     for (;internalPosB < startPos + sourceFile.length() % bytesPerSplit;
@@ -142,8 +152,4 @@ public class Join {
         }
 
     }
-
-    //public List<LineObject> getLineObjects()
-
-
 }

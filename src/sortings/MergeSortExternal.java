@@ -14,21 +14,29 @@ public class MergeSortExternal {
     public static int newLineByteAmount;
     public static int byteSize;
 
+    /**
+     * Sorts file and writes it to the output File
+     * @param inputFile  - name of input file
+     * @param outputFile - name of output file
+     * @param mBperSplit - amount of the available Mb in RAM
+     * @return Path to the output File
+     * @throws IOException
+     */
     public static Path sort(String inputFile, String outputFile, int mBperSplit) throws IOException {
         byteSize = 24;
         newLineByteAmount = 1;
         List<Path> pathFiles = splitFile(inputFile, mBperSplit);
+        System.out.println("Files were splited");
         merge(outputFile, pathFiles);
+        System.out.println("Files were merged");
         return Paths.get(outputFile + ".csv");
     }
-
-
 
     /**
      * Split a file into multiples files.
      *
-     * @param fileName   Name of file to be split.
-     * @param mBperSplit maximum number of MB per file.
+     * @param fileName   - name of file to be split.
+     * @param mBperSplit - maximum number of MB per file.
      * @throws IOException
      */
     private static List<Path> splitFile(String fileName, int mBperSplit) throws IOException {
@@ -44,6 +52,10 @@ public class MergeSortExternal {
         try (RandomAccessFile sourceFile = new RandomAccessFile(fileName, "r");
              FileChannel sourceChannel = sourceFile.getChannel()) {
             long internalPos = 0;
+
+            /**
+             * Read big file with chunks that will be written in there own files
+             */
             for (; position < numSplits; position++) {
                 arrayList = new ArrayList<>();
                 for (;internalPos < (position + newLineByteAmount) * bytesPerSplit;
@@ -51,13 +63,16 @@ public class MergeSortExternal {
 
                     sourceChannel.position(internalPos);
                     sourceFile.read(buffer);
-                    arrayList.add(LineObject.getLineObjectFromBuffer(buffer));
+                    arrayList.add(LineObject.getLineObject(buffer));
                 }
                 Collections.sort(arrayList);
                 writePartToFile(arrayList, partFiles);
 
             }
 
+            /**
+             * Read big file is it not full read
+             */
             if (remainingBytes > 0) {
                 arrayList = new ArrayList<>();
                 for (;
@@ -66,7 +81,7 @@ public class MergeSortExternal {
 
                     sourceChannel.position(internalPos);
                     sourceFile.read(buffer);
-                    arrayList.add(LineObject.getLineObjectFromBuffer(buffer));
+                    arrayList.add(LineObject.getLineObject(buffer));
                 }
                 Collections.sort(arrayList);
                 writePartToFile(arrayList, partFiles);
@@ -76,6 +91,12 @@ public class MergeSortExternal {
         return partFiles;
     }
 
+    /**
+     * Writes arrayList to the file
+     * @param arrayList - list of LineObjects
+     * @param partFiles - list of paths to chunked files
+     * @throws IOException
+     */
     private static void writePartToFile(List<LineObject> arrayList, List<Path> partFiles) throws IOException {
         Path fileName = Paths.get((fileCounter++) + ".csv");
         try (BufferedOutputStream bufferedOutputStream =
@@ -91,29 +112,42 @@ public class MergeSortExternal {
         partFiles.add(fileName);
     }
 
+    /**
+     * Merge sorted files
+     * @param fileName  - name of the output file
+     * @param partFiles - list of Paths to files that will be merged
+     * @throws IOException
+     */
     private static void merge(String fileName, List<Path> partFiles) throws IOException {
         PriorityQueue<HeapNode> heap = new PriorityQueue<>();
         Path outputPath = Paths.get(fileName + ".csv");
         byte[] buffer = new byte[byteSize];
 
+        /**
+         * Full the heap with first elements
+         */
         for (int i = 0; i < partFiles.size(); i++) {
             try (RandomAccessFile sourceFile = new RandomAccessFile(partFiles.get(i).toFile(), "r");
                  FileChannel sourceChannel = sourceFile.getChannel()) {
                 sourceChannel.position(0);
                 sourceFile.read(buffer);
-                heap.add(new HeapNode(LineObject.getLineObjectFromBuffer(buffer), partFiles.get(i), byteSize + newLineByteAmount));
+                heap.add(new HeapNode(LineObject.getLineObject(buffer), partFiles.get(i), byteSize + newLineByteAmount));
             }
         }
 
         int count = 0;
 
+        /**
+         * One by one LineObjects are read from files.
+         * When the least one is selected by the HeapSort it is written to file
+         */
         try (BufferedOutputStream bufferedOutputStream =
                      new BufferedOutputStream(new FileOutputStream(outputPath.toFile()))) {
+
             while (count < partFiles.size()) {
                 HeapNode heapNode = heap.poll();
-                if (heapNode == null) {
-                    break;
-                }
+                if (heapNode == null) { break; }
+
                 bufferedOutputStream.write((heapNode.lineObject.toString() + "\n").getBytes());
 
                 if (heapNode.lastPosition >= heapNode.fileName.toFile().length()) {
@@ -121,11 +155,14 @@ public class MergeSortExternal {
                     continue;
                 }
 
+                /**
+                 * Read LineObject from the file from which you just recorded
+                 */
                 try (RandomAccessFile sourceFile = new RandomAccessFile(heapNode.fileName.toFile(), "r");
                      FileChannel sourceChannel = sourceFile.getChannel()) {
                     sourceChannel.position(heapNode.lastPosition);
                     sourceFile.read(buffer);
-                    heap.add(new HeapNode(LineObject.getLineObjectFromBuffer(buffer), heapNode.fileName,
+                    heap.add(new HeapNode(LineObject.getLineObject(buffer), heapNode.fileName,
                             heapNode.lastPosition + byteSize + newLineByteAmount));
                 }
             }
