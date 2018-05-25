@@ -1,6 +1,7 @@
 package entities;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,19 +18,10 @@ public class LineObject implements Comparable<LineObject>{
         this.valuesList.add(value);
     }
 
-    public void addValue(String value) {
-        valuesList.add(value);
-    }
-
-    private void setValuesList(List<String> valuesList) {
-        this.valuesList = valuesList;
-    }
-
     /**
      * Method that unites string sets by the Cartesian product
-     *
      * @param anotherValuesList - List of Strings that correspond to unique key
-     */
+    */
     public void addValues(List<String> anotherValuesList) {
         List<String> resultValuesList = new ArrayList<>();
         for (int i = 0; i < valuesList.size(); i++) {
@@ -40,12 +32,44 @@ public class LineObject implements Comparable<LineObject>{
         setValuesList(resultValuesList);
     }
 
+    /**
+     * Creates LineObject from buffer
+     * @param buffer
+     * @return LineObject
+     */
+    public static LineObject getLineObject(byte[] buffer) {
+        byte[] keyStr = Arrays.copyOfRange(buffer, 0, 9);
+        byte[] value = Arrays.copyOfRange(buffer, 10, 24);
+        int key = Integer.parseInt(new String(keyStr));
+        return new LineObject(key, new String(value));
+    }
+
+    /**
+     * Generates "join" String for Output File
+     * @return String
+     */
+    public String toJoinedString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i< valuesList.size(); i++) {
+            stringBuilder.append(String.format("%09d", key)).append(',').append(valuesList.get(i)).append('\n');
+        }
+        return stringBuilder.toString();
+    }
+
     public int getKey() {
         return key;
     }
 
     public List<String> getValuesList() {
         return valuesList;
+    }
+
+    public void addValue(String value) {
+        valuesList.add(value);
+    }
+
+    private void setValuesList(List<String> valuesList) {
+        this.valuesList = valuesList;
     }
 
     @Override
@@ -64,5 +88,15 @@ public class LineObject implements Comparable<LineObject>{
     @Override
     public int hashCode() {
         return Objects.hash(key, valuesList);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        return stringBuilder
+                .append(String.format("%09d", key))
+                .append(',')
+                .append(valuesList.get(0))
+                .toString();
     }
 }
