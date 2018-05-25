@@ -11,21 +11,24 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FileIO {
+class FileIO {
     /**
      * Read file and convert data to List
-     * @param filename
+     * @param fileName
      * @return List<LineObject>
      * @throws IOException
      */
-    public static List<LineObject> read(String filename) throws IOException {
+    public static List<LineObject> read(String fileName) throws IOException {
         List<LineObject> resultList = new ArrayList<>();
-        Path path = FileSystems.getDefault().getPath(filename);
+        Path path = FileSystems.getDefault().getPath(fileName);
         Files.lines(path, StandardCharsets.UTF_8).forEach(line -> {
             String[] lineValues = line.split(",");
             int key = Integer.parseInt(lineValues[0]);
             String value = lineValues[1];
             LineObject lineObject = new LineObject(key, value);
+            for (int i = 2; i < lineValues.length; i++) {
+                lineObject.addValue(lineValues[i]);
+            }
             int indexOfLineObject = resultList.indexOf(lineObject);
 
             if (indexOfLineObject == -1) {
@@ -40,12 +43,12 @@ public class FileIO {
 
     /**
      * Converts List<LineObject> to file
-     * @param filename
+     * @param fileName
      * @param lineObjectList
      * @throws IOException
      */
-    public static void write(String filename, List<LineObject> lineObjectList) throws IOException {
-        Path path = FileSystems.getDefault().getPath(filename);
+    public static void write(String fileName, List<LineObject> lineObjectList) throws IOException {
+        Path path = FileSystems.getDefault().getPath(fileName);
         OutputStream out = Files.newOutputStream(path);
         for (LineObject lineObject : lineObjectList) {
             for (String string : lineObject.getValuesList()) {

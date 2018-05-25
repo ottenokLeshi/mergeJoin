@@ -1,6 +1,8 @@
 package entities;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -29,7 +31,7 @@ public class LineObject implements Comparable<LineObject>{
      * Method that unites string sets by the Cartesian product
      *
      * @param anotherValuesList - List of Strings that correspond to unique key
-     */
+    */
     public void addValues(List<String> anotherValuesList) {
         List<String> resultValuesList = new ArrayList<>();
         for (int i = 0; i < valuesList.size(); i++) {
@@ -48,6 +50,13 @@ public class LineObject implements Comparable<LineObject>{
         return valuesList;
     }
 
+    public static LineObject getLineObjectFromBuffer(byte[] buffer) {
+        byte[] keyStr = Arrays.copyOfRange(buffer, 0, 9);
+        byte[] value = Arrays.copyOfRange(buffer, 10, 24);
+        int key = Integer.parseInt(new String(keyStr));
+        return new LineObject(key, new String(value));
+    }
+
     @Override
     public int compareTo(LineObject o) {
         return key.compareTo(o.getKey());
@@ -64,5 +73,22 @@ public class LineObject implements Comparable<LineObject>{
     @Override
     public int hashCode() {
         return Objects.hash(key, valuesList);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i< valuesList.size(); i++) {
+            stringBuilder.append(String.format("%09d", key)).append(',').append(valuesList.get(i));
+        }
+        return stringBuilder.toString();
+    }
+
+    public String toJoinedString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i< valuesList.size(); i++) {
+            stringBuilder.append(String.format("%09d", key)).append(',').append(valuesList.get(i)).append('\n');
+        }
+        return stringBuilder.toString();
     }
 }
