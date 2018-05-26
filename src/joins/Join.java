@@ -18,6 +18,11 @@ public class Join {
     private String pathB;
     private String pathOutput;
     private int mBperSplit;
+    private long bytesPerSplit;
+    private int byteSize;
+    private int newLineByteAmount;
+    private long internalPosA = 0;
+    private long internalPosB = 0;
 
     public Join(String pathA, String pathB, String pathOutput, int mBperSplit) {
         this.pathA = pathA;
@@ -53,12 +58,10 @@ public class Join {
         System.out.println("Joining starts");
         int i = 0;
         int j = 0;
-        long bytesPerSplit = 1024L * 1024L * mBperSplit / 2;
-        int byteSize = MergeSortExternal.byteSize;
-        int newLineByteAmount = MergeSortExternal.newLineByteAmount;
+        bytesPerSplit = 1024L * 1024L * mBperSplit / 2;
+        byteSize = MergeSortExternal.byteSize;
+        newLineByteAmount = MergeSortExternal.newLineByteAmount;
         byte[] buffer = new byte[byteSize];
-        long internalPosA = 0;
-        long internalPosB = 0;
         List<LineObject> arrayListA = new ArrayList<>();
         List<LineObject> arrayListB = new ArrayList<>();
 
@@ -120,36 +123,30 @@ public class Join {
              * Fills the list if file is't empty and interator is at the end of the list
              */
             if (i == arrayListA.size() && internalPosA < Files.size(pathSortA)) {
-                try (RandomAccessFile sourceFile = new RandomAccessFile(pathSortA.toFile(), "r");
-                     FileChannel sourceChannel = sourceFile.getChannel()) {
-                    long startPos = internalPosA;
-                    arrayListA.clear();
-                    for (;internalPosA < startPos + sourceFile.length() % bytesPerSplit;
-                         internalPosA += (byteSize + newLineByteAmount)) {
-                        sourceChannel.position(internalPosA);
-                        sourceFile.read(buffer);
-                        addValueToList(arrayListA, buffer);
-                    }
-                }
+                arrayListA.clear();
+                internalPosA = addLineObjects(arrayListA, pathSortA, internalPosA, buffer);
                 i = 0;
             }
 
             if (j == arrayListB.size() && internalPosB < Files.size(pathSortB)) {
-                try (RandomAccessFile sourceFile = new RandomAccessFile(pathSortB.toFile(), "r");
-                FileChannel sourceChannel = sourceFile.getChannel()) {
-                    long startPos = internalPosB;
-                    arrayListB.clear();
-                    for (;internalPosB < startPos + sourceFile.length() % bytesPerSplit;
-                         internalPosB += (byteSize + newLineByteAmount)) {
-                        sourceChannel.position(internalPosB);
-                        sourceFile.read(buffer);
-                        addValueToList(arrayListB, buffer);
-                    }
-                }
+                arrayListB.clear();
+                internalPosB = addLineObjects(arrayListB, pathSortB, internalPosB, buffer);
                 j = 0;
             }
-
         }
+    }
 
+    private long addLineObjects(List<LineObject> arrayList, Path pathSort, long internalPos, byte[] buffer) throws IOException {
+        try (RandomAccessFile sourceFile = new RandomAccessFile(pathSort.toFile(), "r");
+             FileChannel sourceChannel = sourceFile.getChannel()) {
+            long startPos = internalPos;
+            for (;internalPos < startPos + sourceFile.length() % bytesPerSplit;
+                 internalPos += (byteSize + newLineByteAmount)) {
+                sourceChannel.position(internalPos);
+                sourceFile.read(buffer);
+                addValueToList(arrayList, buffer);
+            }
+        }
+        return internalPos;
     }
 }
